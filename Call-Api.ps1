@@ -77,17 +77,7 @@ if (($Method -eq 'Post' -or $Method -eq 'Patch') -and $Body) {
 
 $response = Invoke-RestMethod @invokeParams
 
-if ($Method -eq 'Get' -and ($status -eq 200 -or $status -eq 204)) {
-    $success = $true
-} elseif ($Method -eq 'Post' -and $status -eq 201) {
-    $success = $true
-} elseif ($Method -eq 'Patch' -and $status -eq 200) {
-    $success = $true
-} else {
-    $success = $false
-}
-
-if ($success) {
+if ($status -eq 200 -or $status -eq 201 -or $status -eq 204) {
     $response | ConvertTo-Json -Depth 100 | Out-File -FilePath "Agents\$Agent\$OutputFile.json"
     $statusColor = 'Green'
 }
