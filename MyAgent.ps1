@@ -1,7 +1,6 @@
 param($Agent, $Mock = $false)
 
 if (!$Agent) {
-    # Read the current agent from the settings.json file.
     $settings = Get-Content -Path 'settings.json' -Raw | ConvertFrom-Json
     $Agent = $settings.CurrentAgent
 
@@ -14,11 +13,11 @@ if (!$Agent) {
 
 if ($Mock) {
     $api = 'https://stoplight.io/mocks/spacetraders/spacetraders/96627693'
-} else {
+}
+else {
     $api = 'https://api.spacetraders.io/v2'
 }
 
-# Register.token must exist in the agent's directory.
 if (!(Test-Path -Path "Agents\$Agent\Register.token")) {
     Write-Host "No register token found for agent: $Agent"
 
@@ -26,13 +25,20 @@ if (!(Test-Path -Path "Agents\$Agent\Register.token")) {
 }
 
 $secureToken = Get-Content -Path "Agents\$Agent\Register.token" | ConvertTo-SecureString
-$uri = $api + '/my/agent'
-$response = Invoke-RestMethod -Authentication Bearer -Token $secureToken -Uri $uri -Method Get -SkipHttpErrorCheck -StatusCodeVariable status
+
+if (!$secureToken) {
+    Write-Host "Failed to load the token for agent: $Agent"
+
+    exit
+}
+
+$response = Invoke-RestMethod -Authentication Bearer -Token $secureToken -Uri "$api/my/agent" -Method Get -SkipHttpErrorCheck -StatusCodeVariable status
 
 if ($status -eq 200) {
     $response | ConvertTo-Json -Depth 100 | Out-File -FilePath "Agents\$Agent\MyAgent.json"
     $statusColor = 'Green'
-} else {
+}
+else {
     $statusColor = 'Red'
 }
 
