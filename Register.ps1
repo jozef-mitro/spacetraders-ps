@@ -1,4 +1,4 @@
-param($Faction = 'Random', $Symbol = 'Random', $Email, $OutputFile, $Mock = $false)
+param($Faction = 'Random', $Symbol = 'Random', $Email, $Mock = $false)
 $Factions = @('COSMIC', 'VOID', 'GALACTIC', 'QUANTUM', 'DOMINION', 'ASTRO', 'CORSAIRS', 'OBSIDIAN', 'AEGIS', 'UNITED', 'SOLITARY', 'COBALT', 'OMEGA', 'ECHO', 'LORDS', 'CULT', 'ANCIENTS', 'SHADOW', 'ETHEREAL')
 $body = @{}
 
@@ -38,10 +38,6 @@ if ($Email) {
 
 $body = $body | ConvertTo-Json
 
-if (!$OutputFile) {
-    $OutputFile = "Register-$Symbol.json"
-}
-
 if ($Mock) {
     $api = 'https://stoplight.io/mocks/spacetraders/spacetraders/96627693'
 } else {
@@ -50,9 +46,24 @@ if ($Mock) {
 
 $uri = $api + '/register'
 $response = Invoke-RestMethod -Uri $uri -Method Post -Body $body -ContentType 'application/json' -SkipHttpErrorCheck -StatusCodeVariable status
-Write-Host "Status code: $status"
-ConvertTo-Json $response -Depth 100
 
 if ($status -eq 201) {
-    $response | ConvertTo-Json -Depth 100 | Out-File -FilePath $OutputFile
+    $OutputDirectory = "Agents\$Symbol"
+
+    if (!(Test-Path -Path $OutputDirectory)) {
+        New-Item -Path $OutputDirectory -ItemType Directory -Force | Out-Null
+    }
+
+    $secureToken = ConvertTo-SecureString -String $response.data.token -AsPlainText -Force
+    $encryptedToken = ConvertFrom-SecureString -SecureString $secureToken
+    $encryptedToken | Out-File -FilePath "$OutputDirectory\Register.token"
+    # Make sure we don't save the token in plain text.
+    $response.data.token.Clear()
+    $response | ConvertTo-Json -Depth 100 | Out-File -FilePath "$OutputDirectory\Register.json"
+    $statusColor = 'Green'
+} else {
+    $statusColor = 'Red'
 }
+
+Write-Host "Status code: $status" -ForegroundColor $statusColor
+ConvertTo-Json $response -Depth 100
