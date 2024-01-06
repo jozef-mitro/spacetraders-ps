@@ -4,6 +4,7 @@ param(
     [Parameter(Mandatory = $true)] [ValidateSet('Get', 'Post')] [string]$Method,
     $Authentication,
     $Agent,
+    $Body,
     $Mock = $false
 )
 
@@ -29,9 +30,16 @@ if ($Route) {
     $uri += "/$Route"
 }
 
-$headers=@{}
-$headers.Add("Content-Type", "application/json")
-$headers.Add("Accept", "application/json")
+$invokeParams = @{
+    Uri                = $uri
+    Method             = $Method
+    SkipHttpErrorCheck = $true
+    StatusCodeVariable = 'status'
+    Headers            = @{
+        'Content-Type' = 'application/json'
+        'Accept'       = 'application/json'
+    }
+}
 
 if ($Authentication) {
     if (!$Agent) {
@@ -59,14 +67,27 @@ if ($Authentication) {
         exit
     }
 
-    # $headers.Add("Authorization", "Bearer $secureToken")
-    $response = Invoke-RestMethod -Authentication Bearer -Token $secureToken -Uri $uri -Method $Method -Headers $headers -SkipHttpErrorCheck -StatusCodeVariable status
-} else {
-    $response = Invoke-RestMethod -Uri $uri -Method $Method -Headers $headers -SkipHttpErrorCheck -StatusCodeVariable status
+    $invokeParams.Add('Authentication', 'Bearer')
+    $invokeParams.Add('Token', $secureToken)
 }
 
+if (($Method -eq 'Post' -or $Method -eq 'Patch') -and $Body) {
+    $invokeParams.Add('Body', $Body)
+}
 
-if ($status -eq 200) {
+$response = Invoke-RestMethod @invokeParams
+
+if ($Method -eq 'Get' -and ($status -eq 200 -or $status -eq 204)) {
+    $success = $true
+} elseif ($Method -eq 'Post' -and $status -eq 201) {
+    $success = $true
+} elseif ($Method -eq 'Patch' -and $status -eq 200) {
+    $success = $true
+} else {
+    $success = $false
+}
+
+if ($success) {
     $response | ConvertTo-Json -Depth 100 | Out-File -FilePath "Agents\$Agent\$OutputFile.json"
     $statusColor = 'Green'
 }
