@@ -4,5 +4,4 @@
 *.swo
 
 # Ignore temporary files:
-Agents/
-Settings.json
+Data/
